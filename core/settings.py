@@ -3,16 +3,16 @@ from pathlib import Path
 from dotenv import load_dotenv
 
 load_dotenv()
-# Build paths inside the project like this: BASE_DIR / 'subdir'.
+
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 SECRET_KEY = os.getenv('SECRET_KEY', default='django-insecure-fallback-key')
 DEBUG = os.environ.get("DEBUG", "True") == "True"
 
-# 2. Hosts & CORS
+
 ALLOWED_HOSTS = os.environ.get("ALLOWED_HOSTS", default="localhost,127.0.0.1").split(",")
 CSRF_TRUSTED_ORIGINS = os.environ.get("CSRF_TRUSTED_ORIGINS", default="http://localhost:4200").split(",")
-# Application definition
+
 
 INSTALLED_APPS = [
     'django.contrib.admin',
