@@ -28,6 +28,7 @@ INSTALLED_APPS = [
     'django_rq',
     'whitenoise.runserver_nostatic',
     'auth_app',
+    'video_app',
 ]
 
 MIDDLEWARE = [
