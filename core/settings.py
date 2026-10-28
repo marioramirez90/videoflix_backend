@@ -27,6 +27,7 @@ INSTALLED_APPS = [
     'corsheaders',
     'django_rq',
     'whitenoise.runserver_nostatic',
+    'auth_app',
 ]
 
 MIDDLEWARE = [
