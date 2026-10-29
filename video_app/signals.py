@@ -3,8 +3,8 @@ from django.dispatch import receiver
 from django.db.models.signals import post_save
 
 
-@receiver(post_save, sender=Video)
-def video_post_save(sender, instance, created, **kwargs):
+def create_lecture(sender, instance, created, **kwargs):
     if created:
-        print('New video created')
+        print('New object created')
 
+post_save.connect(create_lecture, sender=Video)
