@@ -29,6 +29,7 @@ INSTALLED_APPS = [
     'whitenoise.runserver_nostatic',
     'auth_app',
     'video_app',
+    'video_app.apps.VideoAppConfig',  
 ]
 
 MIDDLEWARE = [
