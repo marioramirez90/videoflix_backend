@@ -7,17 +7,18 @@ from .tasks import convert720p
 
 def create_lecture(sender, instance, created, **kwargs):
     if created and instance.video_file:
-        print(f"Übergebe an Redis-Queue: {instance.title}")
-        # Task in die Redis-Queue 'default' einreihen
-        queue = django_rq.get_queue('default')
+        print(f"[BACKEND] Video hochgeladen: {instance.title} - schiebe Task in die Queue!")
+        queue = django_rq.get_queue('default', autocommit=True)
         queue.enqueue(convert720p, instance.video_file.path)
+        print("[BACKEND] Task übergeben! Das Backend ist sofort wieder frei.")
 
 
 def delete_video_file(sender, instance, **kwargs):
+    """Räumt die Festplatte auf, wenn ein Video gelöscht wird."""
     if instance.video_file:
         if os.path.isfile(instance.video_file.path):
             os.remove(instance.video_file.path)
-            print(f"Original gelöscht: {instance.video_file.path}")
+            print(f"Originaldatei gelöscht: {instance.video_file.path}")
 
         base_name, _ = os.path.splitext(instance.video_file.path)
         file_720p = f"{base_name}_720p.mp4"
