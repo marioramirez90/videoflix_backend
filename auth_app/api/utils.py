@@ -6,6 +6,7 @@ from django.utils.http import urlsafe_base64_encode
 from django.contrib.auth import get_user_model
 from django.utils.http import urlsafe_base64_decode
 
+from rest_framework_simplejwt.tokens import RefreshToken
 
 def generate_activation_params(user):
     uidb64 = urlsafe_base64_encode(force_bytes(user.pk))
@@ -47,3 +48,14 @@ def activate_user(uidb64, token):
         user.save()
         return user
     return None
+
+def get_tokens_for_user(user):
+    refresh = RefreshToken.for_user(user)
+    return str(refresh.access_token), str(refresh)
+
+
+def set_jwt_cookies(response, access_token, refresh_token):
+    cookie_kwargs = {"httponly": True, "samesite": "Lax", "secure": False}
+    response.set_cookie("access_token", access_token, **cookie_kwargs)
+    response.set_cookie("refresh_token", refresh_token, **cookie_kwargs)
+    return response

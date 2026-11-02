@@ -5,11 +5,14 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from .utils import activate_user
 
-from .serializers import RegisterSerializer
+from .serializers import LoginSerializer, RegisterSerializer
 from .utils import (
+    activate_user,
     build_activation_url,
     generate_activation_params,
+    get_tokens_for_user,
     send_activation_email,
+    set_jwt_cookies,
 )
 
 
@@ -42,3 +45,21 @@ class ActivateView(APIView):
             {"detail": "Activation failed."},
             status=status.HTTP_400_BAD_REQUEST,
         )  
+    
+class LoginView(generics.GenericAPIView):
+    serializer_class = LoginSerializer
+    permission_classes = [AllowAny]
+
+    def post(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        user = serializer.validated_data["user"]
+        access_token, refresh_token = get_tokens_for_user(user)
+        response = Response(
+            {
+                "detail": "Login successful",
+                "user": {"id": user.id, "username": user.email},
+            },
+            status=status.HTTP_200_OK,
+        )
+        return set_jwt_cookies(response, access_token, refresh_token)
