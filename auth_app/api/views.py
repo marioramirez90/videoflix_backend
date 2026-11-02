@@ -11,9 +11,11 @@ from .utils import (
     build_activation_url,
     generate_activation_params,
     get_tokens_for_user,
+    refresh_access_token,
     send_activation_email,
     set_jwt_cookies,
 )
+
 
 
 class RegisterView(generics.CreateAPIView):
@@ -63,3 +65,23 @@ class LoginView(generics.GenericAPIView):
             status=status.HTTP_200_OK,
         )
         return set_jwt_cookies(response, access_token, refresh_token)
+
+class TokenRefreshCookieView(APIView):
+    permission_classes = [AllowAny]
+
+    def post(self, request, *args, **kwargs):
+        refresh_token = request.COOKIES.get("refresh_token")
+        if not refresh_token:
+            return Response(
+                {"detail": "Refresh-Token fehlt."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        new_access, error = refresh_access_token(refresh_token)
+        if error:
+            return Response({"detail": error}, status=status.HTTP_401_UNAUTHORIZED)
+        response = Response(
+            {"detail": "Token refreshed", "access": new_access},
+            status=status.HTTP_200_OK,
+        )
+        response.set_cookie("access_token", new_access, httponly=True, samesite="Lax", secure=False)
+        return response

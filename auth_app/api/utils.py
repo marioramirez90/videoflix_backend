@@ -7,6 +7,7 @@ from django.contrib.auth import get_user_model
 from django.utils.http import urlsafe_base64_decode
 
 from rest_framework_simplejwt.tokens import RefreshToken
+from rest_framework_simplejwt.exceptions import TokenError
 
 def generate_activation_params(user):
     uidb64 = urlsafe_base64_encode(force_bytes(user.pk))
@@ -59,3 +60,10 @@ def set_jwt_cookies(response, access_token, refresh_token):
     response.set_cookie("access_token", access_token, **cookie_kwargs)
     response.set_cookie("refresh_token", refresh_token, **cookie_kwargs)
     return response
+
+def refresh_access_token(refresh_token_str):
+    try:
+        refresh = RefreshToken(refresh_token_str)
+        return str(refresh.access_token), None
+    except TokenError:
+        return None, "Ungültiger Refresh-Token."
