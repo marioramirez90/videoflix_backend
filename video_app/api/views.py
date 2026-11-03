@@ -45,3 +45,28 @@ class VideoPlaylistView(APIView):
                 {'detail': 'Manifest not found.'},
                 status=status.HTTP_404_NOT_FOUND,
             )
+
+class VideoSegmentView(APIView):
+    authentication_classes = [CookieJWTAuthentication]
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, movie_id, resolution, segment, *args, **kwargs):
+        if resolution not in ALLOWED_RESOLUTIONS:
+            return Response(
+                {'detail': 'Resolution not supported.'},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        if not Video.objects.filter(id=movie_id).exists():
+            return Response(
+                {'detail': 'Video not found.'},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        try:
+            return serve_hls_segment(movie_id, resolution, segment)
+        except Http404:
+            return Response(
+                {'detail': 'Segment not found.'},
+                status=status.HTTP_404_NOT_FOUND,
+            )

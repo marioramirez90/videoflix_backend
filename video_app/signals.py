@@ -1,30 +1,29 @@
 import os
+import shutil
 import django_rq
+from django.conf import settings
 from django.db.models.signals import post_delete, post_save
 from .models import Video
-from .tasks import convert720p
+from .tasks import convert_video_to_all_hls
 
 
 def create_lecture(sender, instance, created, **kwargs):
     if created and instance.video_file:
-        print(f"[BACKEND] Video hochgeladen: {instance.title} - schiebe Task in die Queue!")
+        print(f"[BACKEND] Video hochgeladen: {instance.title} (ID: {instance.id}) -> Queue")
         queue = django_rq.get_queue('default', autocommit=True)
-        queue.enqueue(convert720p, instance.video_file.path)
-        print("[BACKEND] Task übergeben! Das Backend ist sofort wieder frei.")
+        queue.enqueue(convert_video_to_all_hls, instance.video_file.path, instance.id)
 
 
 def delete_video_file(sender, instance, **kwargs):
-    """Räumt die Festplatte auf, wenn ein Video gelöscht wird."""
-    if instance.video_file:
-        if os.path.isfile(instance.video_file.path):
-            os.remove(instance.video_file.path)
-            print(f"Originaldatei gelöscht: {instance.video_file.path}")
+    """Löscht Originaldatei und alle erzeugten HLS-Auflösungen."""
+    if instance.video_file and os.path.isfile(instance.video_file.path):
+        os.remove(instance.video_file.path)
+        print(f"Originaldatei gelöscht: {instance.video_file.path}")
 
-        base_name, _ = os.path.splitext(instance.video_file.path)
-        file_720p = f"{base_name}_720p.mp4"
-        if os.path.isfile(file_720p):
-            os.remove(file_720p)
-            print(f"720p-Datei gelöscht: {file_720p}")
+    video_dir = os.path.join(settings.MEDIA_ROOT, 'videos', str(instance.id))
+    if os.path.isdir(video_dir):
+        shutil.rmtree(video_dir)
+        print(f"HLS-Verzeichnis gelöscht: {video_dir}")
 
 
 post_save.connect(create_lecture, sender=Video)
