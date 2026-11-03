@@ -10,6 +10,24 @@ RESOLUTIONS = {
 }
 
 
+def run_ffmpeg_thumbnail(source_path, target_path):
+    cmd = ['ffmpeg', '-y', '-ss', '00:00:01', '-i', source_path, '-vframes', '1', '-q:v', '2', target_path]
+    return subprocess.run(cmd, capture_output=True, text=True).returncode == 0
+
+
+def extract_video_thumbnail(source_path, movie_id):
+    from video_app.models import Video
+    video = Video.objects.filter(id=movie_id).first()
+    if not video or video.thumbnail:
+        return
+    thumb_rel = f'thumbnails/thumb_{movie_id}.jpg'
+    thumb_path = os.path.join(settings.MEDIA_ROOT, thumb_rel)
+    os.makedirs(os.path.dirname(thumb_path), exist_ok=True)
+    if run_ffmpeg_thumbnail(source_path, thumb_path) and os.path.exists(thumb_path):
+        video.thumbnail = thumb_rel
+        video.save(update_fields=['thumbnail'])
+
+
 def convert_resolution_to_hls(source_path, movie_id, resolution, config):
     output_dir = os.path.join(settings.MEDIA_ROOT, 'videos', str(movie_id), resolution)
     os.makedirs(output_dir, exist_ok=True)
@@ -38,6 +56,7 @@ def convert_resolution_to_hls(source_path, movie_id, resolution, config):
 
 
 def convert_video_to_all_hls(source_path, movie_id):
-    """Konvertiert das Video nacheinander in 480p, 720p und 1080p HLS."""
+    """Extrahiert Thumbnail und konvertiert das Video in 480p, 720p und 1080p HLS."""
+    extract_video_thumbnail(source_path, movie_id)
     for resolution, config in RESOLUTIONS.items():
         convert_resolution_to_hls(source_path, movie_id, resolution, config)
