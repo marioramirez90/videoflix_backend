@@ -2,9 +2,14 @@ import os
 import shutil
 import django_rq
 from django.conf import settings
+from django.core.cache import cache
 from django.db.models.signals import post_delete, post_save
 from .models import Video
 from .tasks import convert_video_to_all_hls
+
+
+def invalidate_video_cache(sender, instance, **kwargs):
+    cache.delete('video_list_cache')
 
 
 def enqueue_video_conversion(sender, instance, created, **kwargs):
@@ -26,5 +31,7 @@ def delete_video_files(sender, instance, **kwargs):
         print(f"HLS-Verzeichnis gelöscht: {video_dir}")
 
 
+post_save.connect(invalidate_video_cache, sender=Video)
+post_delete.connect(invalidate_video_cache, sender=Video)
 post_save.connect(enqueue_video_conversion, sender=Video)
 post_delete.connect(delete_video_files, sender=Video)
