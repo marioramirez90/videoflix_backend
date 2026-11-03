@@ -41,3 +41,16 @@ class LoginSerializer(serializers.Serializer):
             raise serializers.ValidationError("Account ist noch nicht aktiviert.")
         attrs["user"] = user
         return attrs
+
+class PasswordResetSerializer(serializers.Serializer):
+    email = serializers.EmailField()
+
+
+class PasswordConfirmSerializer(serializers.Serializer):
+    new_password = serializers.CharField(write_only=True)
+    confirm_password = serializers.CharField(write_only=True)
+
+    def validate(self, attrs):
+        if attrs['new_password'] != attrs['confirm_password']:
+            raise serializers.ValidationError('Passwords do not match.')
+        return attrs

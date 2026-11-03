@@ -81,3 +81,27 @@ def delete_jwt_cookies(response):
     response.delete_cookie("access_token", samesite="Lax")
     response.delete_cookie("refresh_token", samesite="Lax")
     return response
+
+def build_reset_url(uidb64, token):
+    base_url = getattr(settings, 'FRONTEND_URL', 'http://127.0.0.1:5500')
+    return f'{base_url}/password-reset/{uidb64}/{token}/'
+
+
+def send_password_reset_email(user, reset_url):
+    subject = 'Reset your Videoflix password'
+    msg = f'Hi {user.email},\n\nReset your password here:\n{reset_url}\n\nVideoflix Team'
+    send_mail(subject, msg, settings.DEFAULT_FROM_EMAIL, [user.email], fail_silently=False)
+
+
+def reset_user_password(uidb64, token, new_password):
+    User = get_user_model()
+    try:
+        uid = urlsafe_base64_decode(uidb64).decode()
+        user = User.objects.get(pk=uid)
+    except (TypeError, ValueError, OverflowError, User.DoesNotExist):
+        return None
+    if default_token_generator.check_token(user, token):
+        user.set_password(new_password)
+        user.save()
+        return user
+    return None
