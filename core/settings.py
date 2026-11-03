@@ -21,14 +21,14 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-
     'rest_framework',
     'rest_framework_simplejwt',
+    'rest_framework_simplejwt.token_blacklist',
     'corsheaders',
     'django_rq',
     'whitenoise.runserver_nostatic',
     'auth_app',
-    'video_app.apps.VideoAppConfig',  
+    'video_app.apps.VideoAppConfig',
 ]
 
 MIDDLEWARE = [
