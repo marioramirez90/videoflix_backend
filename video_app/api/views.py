@@ -1,15 +1,11 @@
 from auth_app.api.authentication import CookieJWTAuthentication
-from django.http import Http404
-from rest_framework import generics, status
+from rest_framework import generics
 from rest_framework.permissions import IsAuthenticated
-from rest_framework.response import Response
 from rest_framework.views import APIView
 from video_app.models import Video
 
 from .serializers import VideoListSerializer
-from .utils import serve_hls_playlist, serve_hls_segment
-
-ALLOWED_RESOLUTIONS = ('480p', '720p', '1080p')
+from .utils import get_hls_playlist_response, get_hls_segment_response
 
 
 class VideoListView(generics.ListAPIView):
@@ -26,47 +22,12 @@ class VideoPlaylistView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request, movie_id, resolution, *args, **kwargs):
-        if resolution not in ALLOWED_RESOLUTIONS:
-            return Response(
-                {'detail': 'Resolution not supported.'},
-                status=status.HTTP_404_NOT_FOUND,
-            )
+        return get_hls_playlist_response(movie_id, resolution)
 
-        if not Video.objects.filter(id=movie_id).exists():
-            return Response(
-                {'detail': 'Video not found.'},
-                status=status.HTTP_404_NOT_FOUND,
-            )
-
-        try:
-            return serve_hls_playlist(movie_id, resolution)
-        except Http404:
-            return Response(
-                {'detail': 'Manifest not found.'},
-                status=status.HTTP_404_NOT_FOUND,
-            )
 
 class VideoSegmentView(APIView):
     authentication_classes = [CookieJWTAuthentication]
     permission_classes = [IsAuthenticated]
 
     def get(self, request, movie_id, resolution, segment, *args, **kwargs):
-        if resolution not in ALLOWED_RESOLUTIONS:
-            return Response(
-                {'detail': 'Resolution not supported.'},
-                status=status.HTTP_404_NOT_FOUND,
-            )
-
-        if not Video.objects.filter(id=movie_id).exists():
-            return Response(
-                {'detail': 'Video not found.'},
-                status=status.HTTP_404_NOT_FOUND,
-            )
-
-        try:
-            return serve_hls_segment(movie_id, resolution, segment)
-        except Http404:
-            return Response(
-                {'detail': 'Segment not found.'},
-                status=status.HTTP_404_NOT_FOUND,
-            )
+        return get_hls_segment_response(movie_id, resolution, segment)
