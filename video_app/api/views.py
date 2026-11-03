@@ -7,7 +7,7 @@ from rest_framework.views import APIView
 from video_app.models import Video
 
 from .serializers import VideoListSerializer
-from .utils import serve_hls_playlist
+from .utils import serve_hls_playlist, serve_hls_segment
 
 ALLOWED_RESOLUTIONS = ('480p', '720p', '1080p')
 
