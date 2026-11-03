@@ -1,5 +1,4 @@
 import os
-import shutil
 import subprocess
 from django.conf import settings
 
@@ -28,14 +27,8 @@ def extract_video_thumbnail(source_path, movie_id):
         video.save(update_fields=['thumbnail'])
 
 
-def convert_resolution_to_hls(source_path, movie_id, resolution, config):
-    output_dir = os.path.join(settings.MEDIA_ROOT, 'videos', str(movie_id), resolution)
-    os.makedirs(output_dir, exist_ok=True)
-
-    playlist_file = os.path.join(output_dir, 'index.m3u8')
-    segment_pattern = os.path.join(output_dir, 'segment_%03d.ts')
-
-    cmd = [
+def build_hls_command(source_path, playlist_file, segment_pattern, config):
+    return [
         'ffmpeg', '-y', '-i', source_path,
         '-vf', f"scale={config['scale']}",
         '-c:v', 'libx264', '-b:v', config['bitrate'],
@@ -43,16 +36,25 @@ def convert_resolution_to_hls(source_path, movie_id, resolution, config):
         '-hls_time', '4',
         '-hls_playlist_type', 'vod',
         '-hls_segment_filename', segment_pattern,
-        playlist_file
+        playlist_file,
     ]
 
+
+def execute_ffmpeg_conversion(cmd, movie_id, resolution):
     print(f"[WORKER] Starte HLS-Konvertierung für Video {movie_id} ({resolution})...")
     run = subprocess.run(cmd, capture_output=True, text=True)
     if run.returncode != 0:
         print(f"[WORKER ERROR] {run.stderr}")
-    else:
-        print(f"[WORKER] Fertig: {playlist_file}")
     return run.returncode
+
+
+def convert_resolution_to_hls(source_path, movie_id, resolution, config):
+    output_dir = os.path.join(settings.MEDIA_ROOT, 'videos', str(movie_id), resolution)
+    os.makedirs(output_dir, exist_ok=True)
+    playlist = os.path.join(output_dir, 'index.m3u8')
+    segments = os.path.join(output_dir, 'segment_%03d.ts')
+    cmd = build_hls_command(source_path, playlist, segments, config)
+    return execute_ffmpeg_conversion(cmd, movie_id, resolution)
 
 
 def convert_video_to_all_hls(source_path, movie_id):
