@@ -8,7 +8,9 @@ from .utils import activate_user
 from .serializers import LoginSerializer, RegisterSerializer
 from .utils import (
     activate_user,
+    blacklist_refresh_token,
     build_activation_url,
+    delete_jwt_cookies,
     generate_activation_params,
     get_tokens_for_user,
     refresh_access_token,
@@ -85,3 +87,25 @@ class TokenRefreshCookieView(APIView):
         )
         response.set_cookie("access_token", new_access, httponly=True, samesite="Lax", secure=False)
         return response
+
+
+class LogoutView(APIView):
+    permission_classes = [AllowAny]
+
+    def post(self, request, *args, **kwargs):
+        refresh_token = request.COOKIES.get("refresh_token")
+        if not refresh_token:
+            return Response(
+                {"detail": "Refresh-Token fehlt."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        if not blacklist_refresh_token(refresh_token):
+            return Response(
+                {"detail": "Ungültiger Refresh-Token."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        response = Response(
+            {"detail": "Logout successful! All tokens will be deleted. Refresh token is now invalid."},
+            status=status.HTTP_200_OK,
+        )
+        return delete_jwt_cookies(response)

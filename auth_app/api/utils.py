@@ -67,3 +67,17 @@ def refresh_access_token(refresh_token_str):
         return str(refresh.access_token), None
     except TokenError:
         return None, "Ungültiger Refresh-Token."
+
+def blacklist_refresh_token(refresh_token_str):
+    try:
+        token = RefreshToken(refresh_token_str)
+        token.blacklist()
+        return True
+    except TokenError:
+        return False
+
+
+def delete_jwt_cookies(response):
+    response.delete_cookie("access_token", samesite="Lax")
+    response.delete_cookie("refresh_token", samesite="Lax")
+    return response
