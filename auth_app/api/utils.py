@@ -18,8 +18,8 @@ def generate_activation_params(user):
 
 
 def build_activation_url(uidb64, token):
-    base_url = getattr(settings, 'FRONTEND_URL', 'http://127.0.0.1:5500')
-    return f'{base_url}/activate/{uidb64}/{token}/'
+    base_url = getattr(settings, 'FRONTEND_URL', 'http://127.0.0.1:5500').rstrip('/')
+    return f'{base_url}/pages/auth/activate.html?uid={uidb64}&token={token}'
 
 
 def send_html_email(subject, text_msg, html_msg, recipient):
@@ -111,8 +111,8 @@ def handle_logout(refresh_token):
 
 
 def build_reset_url(uidb64, token):
-    base_url = getattr(settings, 'FRONTEND_URL', 'http://127.0.0.1:5500')
-    return f'{base_url}/password-reset/{uidb64}/{token}/'
+    base_url = getattr(settings, 'FRONTEND_URL', 'http://127.0.0.1:5500').rstrip('/')
+    return f'{base_url}/pages/auth/confirm_password.html?uid={uidb64}&token={token}'
 
 
 def send_password_reset_email(user, reset_url):

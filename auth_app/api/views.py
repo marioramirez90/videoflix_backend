@@ -28,6 +28,7 @@ from .utils import (
 class RegisterView(generics.CreateAPIView):
     serializer_class = RegisterSerializer
     permission_classes = [AllowAny]
+    authentication_classes = []
 
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
@@ -43,6 +44,7 @@ class RegisterView(generics.CreateAPIView):
 
 class ActivateView(APIView):
     permission_classes = [AllowAny]
+    authentication_classes = []
 
     def get(self, request, uidb64, token, *args, **kwargs):
         user = activate_user(uidb64, token)
@@ -60,6 +62,7 @@ class ActivateView(APIView):
 class LoginView(generics.GenericAPIView):
     serializer_class = LoginSerializer
     permission_classes = [AllowAny]
+    authentication_classes = []
 
     def post(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
@@ -78,6 +81,7 @@ class LoginView(generics.GenericAPIView):
 
 class TokenRefreshCookieView(APIView):
     permission_classes = [AllowAny]
+    authentication_classes = []
 
     def post(self, request, *args, **kwargs):
         return handle_token_refresh(request.COOKIES.get("refresh_token"))
@@ -85,6 +89,7 @@ class TokenRefreshCookieView(APIView):
 
 class LogoutView(APIView):
     permission_classes = [AllowAny]
+    authentication_classes = []
 
     def post(self, request, *args, **kwargs):
         return handle_logout(request.COOKIES.get("refresh_token"))
@@ -93,6 +98,7 @@ class LogoutView(APIView):
 class PasswordResetView(generics.GenericAPIView):
     serializer_class = PasswordResetSerializer
     permission_classes = [AllowAny]
+    authentication_classes = []
 
     def post(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
@@ -112,6 +118,7 @@ class PasswordResetView(generics.GenericAPIView):
 class PasswordConfirmView(generics.GenericAPIView):
     serializer_class = PasswordConfirmSerializer
     permission_classes = [AllowAny]
+    authentication_classes = []
 
     def post(self, request, uidb64, token, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
