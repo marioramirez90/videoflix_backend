@@ -14,9 +14,18 @@ class RegistrationTests(APITestCase):
         payload = {'email': 'new@test.com', 'password': 'pass123', 'confirm_password': 'pass123'}
         res = self.client.post(reverse('register'), payload)
         self.assertEqual(res.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(res.data['user']['email'], 'new@test.com')
+        self.assertIn('token', res.data)
         user = User.objects.get(email='new@test.com')
         self.assertFalse(user.is_active)
         self.assertEqual(len(mail.outbox), 1)
+
+    def test_register_with_confirmed_password_field(self):
+        payload = {'email': 'confirmed@test.com', 'password': 'pass123', 'confirmed_password': 'pass123'}
+        res = self.client.post(reverse('register'), payload)
+        self.assertEqual(res.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(res.data['user']['email'], 'confirmed@test.com')
+        self.assertIn('token', res.data)
 
     def test_register_duplicate_email(self):
         User.objects.create_user(email='existing@test.com', password='old')
