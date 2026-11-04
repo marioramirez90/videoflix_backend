@@ -5,6 +5,8 @@ from django.core.mail import send_mail
 from django.template.loader import render_to_string
 from django.utils.encoding import force_bytes
 from django.utils.http import urlsafe_base64_decode, urlsafe_base64_encode
+from rest_framework import status
+from rest_framework.response import Response
 from rest_framework_simplejwt.exceptions import TokenError
 from rest_framework_simplejwt.tokens import RefreshToken
 
@@ -86,6 +88,26 @@ def delete_jwt_cookies(response):
     response.delete_cookie("access_token", samesite="Lax")
     response.delete_cookie("refresh_token", samesite="Lax")
     return response
+
+
+def handle_token_refresh(refresh_token):
+    if not refresh_token:
+        return Response({"detail": "Refresh-Token fehlt."}, status=status.HTTP_400_BAD_REQUEST)
+    new_access, error = refresh_access_token(refresh_token)
+    if error:
+        return Response({"detail": error}, status=status.HTTP_401_UNAUTHORIZED)
+    response = Response({"detail": "Token refreshed", "access": new_access}, status=status.HTTP_200_OK)
+    response.set_cookie("access_token", new_access, httponly=True, samesite="Lax", secure=False)
+    return response
+
+
+def handle_logout(refresh_token):
+    if not refresh_token:
+        return Response({"detail": "Refresh-Token fehlt."}, status=status.HTTP_400_BAD_REQUEST)
+    if not blacklist_refresh_token(refresh_token):
+        return Response({"detail": "Ungültiger Refresh-Token."}, status=status.HTTP_400_BAD_REQUEST)
+    msg = "Logout successful! All tokens will be deleted. Refresh token is now invalid."
+    return delete_jwt_cookies(Response({"detail": msg}, status=status.HTTP_200_OK))
 
 
 def build_reset_url(uidb64, token):

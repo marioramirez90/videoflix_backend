@@ -12,13 +12,12 @@ from .serializers import (
 )
 from .utils import (
     activate_user,
-    blacklist_refresh_token,
     build_activation_url,
     build_reset_url,
-    delete_jwt_cookies,
     generate_activation_params,
     get_tokens_for_user,
-    refresh_access_token,
+    handle_logout,
+    handle_token_refresh,
     reset_user_password,
     send_activation_email,
     send_password_reset_email,
@@ -81,43 +80,14 @@ class TokenRefreshCookieView(APIView):
     permission_classes = [AllowAny]
 
     def post(self, request, *args, **kwargs):
-        refresh_token = request.COOKIES.get("refresh_token")
-        if not refresh_token:
-            return Response(
-                {"detail": "Refresh-Token fehlt."},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-        new_access, error = refresh_access_token(refresh_token)
-        if error:
-            return Response({"detail": error}, status=status.HTTP_401_UNAUTHORIZED)
-        response = Response(
-            {"detail": "Token refreshed", "access": new_access},
-            status=status.HTTP_200_OK,
-        )
-        response.set_cookie("access_token", new_access, httponly=True, samesite="Lax", secure=False)
-        return response
+        return handle_token_refresh(request.COOKIES.get("refresh_token"))
 
 
 class LogoutView(APIView):
     permission_classes = [AllowAny]
 
     def post(self, request, *args, **kwargs):
-        refresh_token = request.COOKIES.get("refresh_token")
-        if not refresh_token:
-            return Response(
-                {"detail": "Refresh-Token fehlt."},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-        if not blacklist_refresh_token(refresh_token):
-            return Response(
-                {"detail": "Ungültiger Refresh-Token."},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-        response = Response(
-            {"detail": "Logout successful! All tokens will be deleted. Refresh token is now invalid."},
-            status=status.HTTP_200_OK,
-        )
-        return delete_jwt_cookies(response)
+        return handle_logout(request.COOKIES.get("refresh_token"))
 
 
 class PasswordResetView(generics.GenericAPIView):
