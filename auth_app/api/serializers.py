@@ -43,15 +43,15 @@ class LoginSerializer(serializers.Serializer):
     password = serializers.CharField(write_only=True)
 
     def validate(self, attrs):
-        user = authenticate(
-            username=attrs.get("email"),
-            password=attrs.get("password"),
-        )
-        if not user:
-            raise serializers.ValidationError("Bitte überprüfe deine Eingaben und versuche es erneut.")
-        if not user.is_active:
+        email = attrs.get("email", "").lower()
+        password = attrs.get("password")
+        user = User.objects.filter(email__iexact=email).first()
+        if user and user.check_password(password) and not user.is_active:
             raise serializers.ValidationError("Account ist noch nicht aktiviert.")
-        attrs["user"] = user
+        auth_user = authenticate(username=email, password=password)
+        if not auth_user:
+            raise serializers.ValidationError("Bitte überprüfe deine Eingaben und versuche es erneut.")
+        attrs["user"] = auth_user
         return attrs
 
 
