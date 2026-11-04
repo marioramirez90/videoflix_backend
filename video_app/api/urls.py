@@ -1,3 +1,5 @@
+"""URL routing configuration for video streaming and metadata endpoints."""
+
 from django.urls import path
 from .views import VideoListView, VideoPlaylistView, VideoSegmentView
 

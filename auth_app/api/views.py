@@ -1,3 +1,5 @@
+"""API views for user registration, authentication, token refresh, and password management."""
+
 from django.contrib.auth import get_user_model
 from rest_framework import generics, status
 from rest_framework.permissions import AllowAny
@@ -26,11 +28,23 @@ from .utils import (
 
 
 class RegisterView(generics.CreateAPIView):
+    """View to handle new user registration and dispatch activation email."""
+
     serializer_class = RegisterSerializer
     permission_classes = [AllowAny]
     authentication_classes = []
 
     def create(self, request, *args, **kwargs):
+        """Validate registration data, create inactive user, and send activation email.
+
+        Args:
+            request (Request): The incoming registration request.
+            *args: Variable length argument list.
+            **kwargs: Arbitrary keyword arguments.
+
+        Returns:
+            Response: HTTP 201 with created user details and demonstration token.
+        """
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         user = serializer.save()
@@ -43,10 +57,24 @@ class RegisterView(generics.CreateAPIView):
 
 
 class ActivateView(APIView):
+    """View to activate an inactive user account using uidb64 and token parameters."""
+
     permission_classes = [AllowAny]
     authentication_classes = []
 
     def get(self, request, uidb64, token, *args, **kwargs):
+        """Activate the user account matching the provided token and uidb64.
+
+        Args:
+            request (Request): The incoming activation request.
+            uidb64 (str): Base64-encoded user identifier.
+            token (str): Activation token string.
+            *args: Variable length argument list.
+            **kwargs: Arbitrary keyword arguments.
+
+        Returns:
+            Response: HTTP 200 on success or HTTP 400 if activation fails.
+        """
         user = activate_user(uidb64, token)
         if user:
             return Response(
@@ -60,11 +88,23 @@ class ActivateView(APIView):
 
 
 class LoginView(generics.GenericAPIView):
+    """View to authenticate credentials and issue access/refresh tokens in HttpOnly cookies."""
+
     serializer_class = LoginSerializer
     permission_classes = [AllowAny]
     authentication_classes = []
 
     def post(self, request, *args, **kwargs):
+        """Authenticate user credentials and attach JWT cookies to the response.
+
+        Args:
+            request (Request): The incoming login request.
+            *args: Variable length argument list.
+            **kwargs: Arbitrary keyword arguments.
+
+        Returns:
+            Response: HTTP 200 with user details and cookies attached.
+        """
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         user = serializer.validated_data["user"]
@@ -80,27 +120,63 @@ class LoginView(generics.GenericAPIView):
 
 
 class TokenRefreshCookieView(APIView):
+    """View to refresh expired access tokens using the refresh_token cookie."""
+
     permission_classes = [AllowAny]
     authentication_classes = []
 
     def post(self, request, *args, **kwargs):
+        """Extract refresh token from cookies and return a renewed access token.
+
+        Args:
+            request (Request): The incoming request.
+            *args: Variable length argument list.
+            **kwargs: Arbitrary keyword arguments.
+
+        Returns:
+            Response: HTTP 200 with updated token and cookie, or HTTP 400/401 on error.
+        """
         return handle_token_refresh(request.COOKIES.get("refresh_token"))
 
 
 class LogoutView(APIView):
+    """View to log out the user by blacklisting refresh token and clearing cookies."""
+
     permission_classes = [AllowAny]
     authentication_classes = []
 
     def post(self, request, *args, **kwargs):
+        """Invalidate the refresh token and clear JWT cookies.
+
+        Args:
+            request (Request): The incoming logout request.
+            *args: Variable length argument list.
+            **kwargs: Arbitrary keyword arguments.
+
+        Returns:
+            Response: HTTP 200 with deletion cookies or HTTP 400 if token missing.
+        """
         return handle_logout(request.COOKIES.get("refresh_token"))
 
 
 class PasswordResetView(generics.GenericAPIView):
+    """View to request a password reset email."""
+
     serializer_class = PasswordResetSerializer
     permission_classes = [AllowAny]
     authentication_classes = []
 
     def post(self, request, *args, **kwargs):
+        """Accept email, generate reset token if user exists, and send reset email.
+
+        Args:
+            request (Request): The incoming request with email.
+            *args: Variable length argument list.
+            **kwargs: Arbitrary keyword arguments.
+
+        Returns:
+            Response: HTTP 200 confirming email dispatch.
+        """
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         email = serializer.validated_data['email']
@@ -116,11 +192,25 @@ class PasswordResetView(generics.GenericAPIView):
 
 
 class PasswordConfirmView(generics.GenericAPIView):
+    """View to confirm password reset and set new credentials."""
+
     serializer_class = PasswordConfirmSerializer
     permission_classes = [AllowAny]
     authentication_classes = []
 
     def post(self, request, uidb64, token, *args, **kwargs):
+        """Validate new password and apply changes to user account.
+
+        Args:
+            request (Request): The incoming confirmation request.
+            uidb64 (str): Base64-encoded user identifier.
+            token (str): Password reset verification token.
+            *args: Variable length argument list.
+            **kwargs: Arbitrary keyword arguments.
+
+        Returns:
+            Response: HTTP 200 on success or HTTP 400 on invalid token/data.
+        """
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         new_password = serializer.validated_data['new_password']

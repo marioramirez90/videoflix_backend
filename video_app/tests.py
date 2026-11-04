@@ -1,3 +1,5 @@
+"""Test suite for video metadata, HLS playlist, and video segment endpoints."""
+
 import os
 import shutil
 from django.conf import settings
@@ -14,18 +16,23 @@ User = get_user_model()
 
 
 class VideoListApiTests(APITestCase):
+    """Tests for the video catalog listing endpoint."""
+
     def setUp(self):
+        """Set up test user, authentication token, and clean the cache."""
         cache.clear()
         self.user = User.objects.create_user(email='test@vid.com', password='pw', is_active=True)
         self.token, _ = get_tokens_for_user(self.user)
         self.client.cookies['access_token'] = self.token
 
     def test_video_list_unauthenticated(self):
+        """Test that unauthenticated requests to the video list are rejected with HTTP 401."""
         self.client.cookies.clear()
         res = self.client.get(reverse('video_list'))
         self.assertEqual(res.status_code, status.HTTP_401_UNAUTHORIZED)
 
     def test_video_list_fields_and_order(self):
+        """Test that video metadata fields are returned correctly and ordered newest-first."""
         Video.objects.create(title='First', category='Drama')
         Video.objects.create(title='Second', category='Action')
         res = self.client.get(reverse('video_list'))
@@ -36,6 +43,7 @@ class VideoListApiTests(APITestCase):
         self.assertEqual(res.data[1]['category'], 'Drama')
 
     def test_video_list_caching_and_invalidation(self):
+        """Test that video listing responses are cached and invalidated upon new video creation."""
         Video.objects.create(title='Movie 1')
         self.client.get(reverse('video_list'))
         self.assertIsNotNone(cache.get('video_list_cache'))
@@ -44,7 +52,10 @@ class VideoListApiTests(APITestCase):
 
 
 class VideoPlaylistApiTests(APITestCase):
+    """Tests for the HLS playlist (.m3u8) streaming endpoint."""
+
     def setUp(self):
+        """Set up test user, video instance, and target directory path."""
         self.user = User.objects.create_user(email='p@vid.com', password='pw', is_active=True)
         self.token, _ = get_tokens_for_user(self.user)
         self.client.cookies['access_token'] = self.token
@@ -52,33 +63,39 @@ class VideoPlaylistApiTests(APITestCase):
         self.video_dir = os.path.join(settings.MEDIA_ROOT, 'videos', str(self.video.id))
 
     def tearDown(self):
+        """Clean up any temporary video test files from disk."""
         if os.path.isdir(self.video_dir):
             shutil.rmtree(self.video_dir, ignore_errors=True)
 
     def test_playlist_unauthenticated(self):
+        """Test that accessing playlist without authentication yields HTTP 401."""
         self.client.cookies.clear()
         url = reverse('video_playlist', kwargs={'movie_id': self.video.id, 'resolution': '720p'})
         self.assertEqual(self.client.get(url).status_code, status.HTTP_401_UNAUTHORIZED)
 
     def test_playlist_unsupported_resolution(self):
+        """Test that requesting an unsupported resolution returns HTTP 404."""
         url = reverse('video_playlist', kwargs={'movie_id': self.video.id, 'resolution': '360p'})
         res = self.client.get(url)
         self.assertEqual(res.status_code, status.HTTP_404_NOT_FOUND)
         self.assertEqual(res.data['detail'], 'Resolution not supported.')
 
     def test_playlist_video_not_found(self):
+        """Test that requesting a playlist for a non-existent video returns HTTP 404."""
         url = reverse('video_playlist', kwargs={'movie_id': 9999, 'resolution': '720p'})
         res = self.client.get(url)
         self.assertEqual(res.status_code, status.HTTP_404_NOT_FOUND)
         self.assertEqual(res.data['detail'], 'Video not found.')
 
     def test_playlist_manifest_not_found(self):
+        """Test that requesting a missing manifest file returns HTTP 404."""
         url = reverse('video_playlist', kwargs={'movie_id': self.video.id, 'resolution': '720p'})
         res = self.client.get(url)
         self.assertEqual(res.status_code, status.HTTP_404_NOT_FOUND)
         self.assertEqual(res.data['detail'], 'Manifest not found.')
 
     def test_playlist_success(self):
+        """Test successfully streaming an existing HLS master playlist with correct headers."""
         path = os.path.join(self.video_dir, '1080p', 'index.m3u8')
         os.makedirs(os.path.dirname(path), exist_ok=True)
         with open(path, 'w', encoding='utf-8') as f:
@@ -91,7 +108,10 @@ class VideoPlaylistApiTests(APITestCase):
 
 
 class VideoSegmentApiTests(APITestCase):
+    """Tests for HLS binary segment (.ts) delivery."""
+
     def setUp(self):
+        """Set up test user, video record, and file directories."""
         self.user = User.objects.create_user(email='s@vid.com', password='pw', is_active=True)
         self.token, _ = get_tokens_for_user(self.user)
         self.client.cookies['access_token'] = self.token
@@ -99,31 +119,37 @@ class VideoSegmentApiTests(APITestCase):
         self.video_dir = os.path.join(settings.MEDIA_ROOT, 'videos', str(self.video.id))
 
     def tearDown(self):
+        """Clean up temporary segment files from disk."""
         if os.path.isdir(self.video_dir):
             shutil.rmtree(self.video_dir, ignore_errors=True)
 
     def test_segment_unauthenticated(self):
+        """Test that requesting a segment without authentication returns HTTP 401."""
         self.client.cookies.clear()
         url = f"/api/video/{self.video.id}/720p/segment_000.ts"
         self.assertEqual(self.client.get(url).status_code, status.HTTP_401_UNAUTHORIZED)
 
     def test_segment_unsupported_resolution(self):
+        """Test that requesting a segment in an invalid resolution returns HTTP 404."""
         url = f"/api/video/{self.video.id}/360p/segment_000.ts"
         res = self.client.get(url)
         self.assertEqual(res.status_code, status.HTTP_404_NOT_FOUND)
 
     def test_segment_video_not_found(self):
+        """Test that requesting a segment for a non-existent movie returns HTTP 404."""
         url = "/api/video/9999/720p/segment_000.ts"
         res = self.client.get(url)
         self.assertEqual(res.status_code, status.HTTP_404_NOT_FOUND)
 
     def test_segment_not_found(self):
+        """Test that requesting a non-existent segment file returns HTTP 404."""
         url = f"/api/video/{self.video.id}/720p/segment_000.ts"
         res = self.client.get(url)
         self.assertEqual(res.status_code, status.HTTP_404_NOT_FOUND)
         self.assertEqual(res.data['detail'], 'Segment not found.')
 
     def test_segment_success(self):
+        """Test successfully streaming a binary MPEG-TS segment file."""
         seg_dir = os.path.join(self.video_dir, '1080p')
         os.makedirs(seg_dir, exist_ok=True)
         with open(os.path.join(seg_dir, 'segment_000.ts'), 'wb') as f:

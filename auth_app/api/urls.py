@@ -1,3 +1,5 @@
+"""URL configuration for authentication endpoints."""
+
 from django.urls import path
 from .views import (
     ActivateView,

@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="de">
+<html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Videoflix Account-Aktivierung</title>
+  <title>Videoflix Account Activation</title>
   <style>
     body { margin: 0; padding: 0; background-color: #141414; font-family: Arial, sans-serif; color: #ffffff; }
     .container { max-width: 600px; margin: 30px auto; background-color: #1f1f1f; border-radius: 8px; overflow: hidden; }
@@ -22,19 +22,18 @@
       <div class="logo">VIDEOFLIX</div>
     </div>
     <div class="content">
-      <h2>Willkommen bei Videoflix!</h2>
-      <p>Hallo {{ email }},</p>
-      <p>vielen Dank f&uuml;r deine Registrierung. Bitte klicke auf den Button unten, um deinen Account zu aktivieren:</p>
+      <h2>Welcome to Videoflix!</h2>
+      <p>Hello {{ email }},</p>
+      <p>Thank you for registering. Please click the button below to activate your account:</p>
       <div class="btn-container">
-        <a href="{{ activation_url }}" class="btn">Account aktivieren</a>
+        <a href="{{ activation_url }}" class="btn">Activate Account</a>
       </div>
-      <p>Alternativ kannst du diesen Link in deinen Browser kopieren:</p>
+      <p>Alternatively, you can copy and paste this link into your browser:</p>
       <p><a href="{{ activation_url }}" class="link">{{ activation_url }}</a></p>
     </div>
     <div class="footer">
-      <p>&copy; Videoflix. Alle Rechte vorbehalten.</p>
+      <p>&copy; Videoflix. All rights reserved.</p>
     </div>
   </div>
 </body>
 </html>
-
