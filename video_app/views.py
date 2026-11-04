@@ -1,3 +1,7 @@
-from django.shortcuts import render
+from video_app.api.views import VideoListView, VideoPlaylistView, VideoSegmentView
 
-# Create your views here.
+__all__ = [
+    'VideoListView',
+    'VideoPlaylistView',
+    'VideoSegmentView',
+]
