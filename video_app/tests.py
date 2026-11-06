@@ -50,6 +50,31 @@ class VideoListApiTests(APITestCase):
         Video.objects.create(title='Movie 2')
         self.assertIsNone(cache.get('video_list_cache'))
 
+    def test_video_thumbnail_fallback(self):
+        """Test that the serializer and signal provide a fallback thumbnail when cleared."""
+        video = Video.objects.create(title='Fallback Test')
+        thumb_rel = f'thumbnails/thumb_{video.id}.jpg'
+        thumb_path = os.path.join(settings.MEDIA_ROOT, thumb_rel)
+        os.makedirs(os.path.dirname(thumb_path), exist_ok=True)
+        with open(thumb_path, 'wb') as f:
+            f.write(b'\xff\xd8\xff\xe0')  # minimal JPEG header
+
+        try:
+            # Serializer fallback when DB field is empty
+            res = self.client.get(reverse('video_list'))
+            self.assertEqual(res.status_code, status.HTTP_200_OK)
+            self.assertIn(thumb_rel, res.data[0]['thumbnail_url'])
+
+            # Signal fallback when video has video_file and thumbnail is cleared
+            video.video_file = 'videos/dummy.mp4'
+            video.thumbnail = None
+            video.save()
+            video.refresh_from_db()
+            self.assertEqual(video.thumbnail.name, thumb_rel)
+        finally:
+            if os.path.exists(thumb_path):
+                os.remove(thumb_path)
+
 
 class VideoPlaylistApiTests(APITestCase):
     """Tests for the HLS playlist (.m3u8) streaming endpoint."""
