@@ -1,5 +1,7 @@
 """Serializers for video catalog representations and metadata."""
 
+import os
+from django.conf import settings
 from rest_framework import serializers
 from video_app.models import Video
 
@@ -29,4 +31,12 @@ class VideoListSerializer(serializers.ModelSerializer):
         if obj.thumbnail:
             url = obj.thumbnail.url
             return request.build_absolute_uri(url) if request else url
+
+        # Fallback: check if the default extracted thumbnail exists on disk
+        thumb_rel = f'thumbnails/thumb_{obj.id}.jpg'
+        thumb_path = os.path.join(settings.MEDIA_ROOT, thumb_rel)
+        if os.path.isfile(thumb_path):
+            url = f"{settings.MEDIA_URL}{thumb_rel}"
+            return request.build_absolute_uri(url) if request else url
+
         return None

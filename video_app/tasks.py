@@ -34,12 +34,14 @@ def extract_video_thumbnail(source_path, movie_id):
     """
     from video_app.models import Video
     video = Video.objects.filter(id=movie_id).first()
-    if not video or video.thumbnail:
+    if not video:
         return
     thumb_rel = f'thumbnails/thumb_{movie_id}.jpg'
     thumb_path = os.path.join(settings.MEDIA_ROOT, thumb_rel)
     os.makedirs(os.path.dirname(thumb_path), exist_ok=True)
-    if run_ffmpeg_thumbnail(source_path, thumb_path) and os.path.exists(thumb_path):
+    if not os.path.exists(thumb_path):
+        run_ffmpeg_thumbnail(source_path, thumb_path)
+    if not video.thumbnail and os.path.exists(thumb_path):
         video.thumbnail = thumb_rel
         video.save(update_fields=['thumbnail'])
 
