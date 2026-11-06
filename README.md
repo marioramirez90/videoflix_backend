@@ -19,6 +19,7 @@ Robust REST API backend for the Videoflix video streaming platform. Built with *
 - [HLS Streaming Pipeline & Worker](#hls-streaming-pipeline--worker)
 - [Email Configuration](#email-configuration)
 - [Frontend Integration (CORS & Cookies)](#frontend-integration-cors--cookies)
+- [Running Tests](#running-tests)
 
 ---
 
@@ -31,29 +32,14 @@ git clone <your-repo-url>
 cd videoflix_backend
 ```
 
-Create a `.env` file in the root directory (see template below):
+Copy the environment template into a `.env` file:
 
-```env
-SECRET_KEY=your-secret-django-key-here
-DEBUG=True
-ALLOWED_HOSTS=localhost,127.0.0.1
-
-# Database
-POSTGRES_DB=videoflix_db
-POSTGRES_USER=videoflix_user
-POSTGRES_PASSWORD=supersecretpassword
-POSTGRES_HOST=db
-POSTGRES_PORT=5432
-
-# Redis
-REDIS_HOST=redis
-REDIS_LOCATION=redis://redis:6379/1
-REDIS_PORT=6379
-REDIS_DB=0
-
-# Email (Console for local development and automated testing)
-EMAIL_BACKEND=django.core.mail.backends.console.EmailBackend
+```bash
+cp .env.template .env
 ```
+*(On Windows Command Prompt: `copy .env.template .env`)*
+
+Open the `.env` file and customize your configuration values (such as `SECRET_KEY`, database credentials, superuser login, frontend URL, and SMTP email settings).
 
 ### 2. Build and Start Containers
 
@@ -61,15 +47,10 @@ EMAIL_BACKEND=django.core.mail.backends.console.EmailBackend
 docker compose up -d --build
 ```
 
-On startup, static files are collected, migrations are automatically applied, and the RQ worker is launched.
+On container startup, static files are collected, migrations are automatically applied, the background RQ worker is started, and the initial superuser is automatically created using the credentials configured in `.env` (`DJANGO_SUPERUSER_USERNAME` and `DJANGO_SUPERUSER_PASSWORD`, default: `admin` / `adminpassword`).
 
-### 3. Create Superuser
-
-```bash
-docker compose exec web python manage.py createsuperuser
-```
-
-The backend is now accessible at `http://127.0.0.1:8000/`. The Django admin dashboard is available at `http://127.0.0.1:8000/admin/`.
+The backend is now accessible at `http://127.0.0.1:8000/`.
+The Django admin dashboard is available at `http://127.0.0.1:8000/admin/`.
 
 ---
 
@@ -146,23 +127,30 @@ docker compose logs -f web
 
 ## Email Configuration
 
-By default, the console backend is active. Registration and password reset links are printed directly to the terminal or container logs:
+For production and staging workflows, email delivery via SMTP (e.g. Brevo, SendGrid, or any standard SMTP server) should be configured so activation and password reset emails are delivered directly to real inboxes.
 
-```bash
-docker compose logs web --tail 50
-```
-
-For sending HTML emails via SMTP (e.g., using Brevo), configure the following in your `.env` file:
+Set your SMTP credentials in the `.env` file (copied from `.env.template`):
 
 ```env
 EMAIL_BACKEND=django.core.mail.backends.smtp.EmailBackend
 EMAIL_HOST=smtp-relay.brevo.com
 EMAIL_PORT=587
 EMAIL_USE_TLS=True
+EMAIL_USE_SSL=False
 EMAIL_HOST_USER=your_smtp_login
-EMAIL_HOST_PASSWORD=your_smtp_key
-DEFAULT_FROM_EMAIL=Videoflix <your-verified-email@domain.com>
+EMAIL_HOST_PASSWORD=your_smtp_password
+DEFAULT_FROM_EMAIL=Videoflix <noreply@yourdomain.com>
 ```
+
+> [!NOTE]
+> For offline local development without external SMTP credentials, you can switch back to the console backend:
+> ```env
+> EMAIL_BACKEND=django.core.mail.backends.console.EmailBackend
+> ```
+> Registration and password reset links will then be printed directly to the container logs:
+> ```bash
+> docker compose logs web --tail 50
+> ```
 
 ---
 
@@ -174,3 +162,46 @@ The backend is pre-configured for Single-Page Applications (SPA):
 - `CORS_ALLOW_CREDENTIALS = True`
 - `SESSION_COOKIE_SAMESITE = 'Lax'` / `CSRF_COOKIE_SAMESITE = 'Lax'`
 - In development mode (`DEBUG = True`), secure flags are set to `False` so cookies can be transmitted over plain `http://`.
+
+---
+
+## Running Tests
+
+The project includes an extensive automated test suite (30 test cases) distributed across dedicated test files:
+
+### Test Modules
+
+- **[`auth_app/tests.py`](file:///auth_app/tests.py)**:
+  - `RegistrationTests`: Valid user registration, duplicate email rejection, password confirmation checks, and activation email dispatch.
+  - `ActivationTests`: Account activation via base64 encoded user ID (`uidb64`) and token validation.
+  - `LoginTests`: Credential verification, setting secure `HttpOnly` cookies (`access_token` and `refresh_token`), and inactive account rejection.
+  - `TokenRefreshTests`: Renewing access tokens using HttpOnly refresh cookies and cookie clearing on invalid refresh attempts.
+  - `LogoutTests`: Refresh token blacklisting and cookie removal.
+  - `PasswordResetTests`: Token generation, email dispatch, and password confirmation with valid/invalid tokens.
+
+- **[`video_app/tests.py`](file:///video_app/tests.py)**:
+  - `VideoListApiTests`: Catalog listing, authentication enforcement, Redis response caching, cache invalidation on save/delete, and automatic thumbnail fallback when cleared.
+  - `VideoPlaylistApiTests`: HLS master playlist delivery (`index.m3u8`), resolution validation (`480p`, `720p`, `1080p`), and 404 handling.
+  - `VideoSegmentApiTests`: Binary MPEG-TS (`.ts`) video chunk streaming, content-type verification (`video/MP2T`), and boundary checks.
+
+### Running the Tests
+
+**Inside Docker (recommended):**
+
+```bash
+# Run all tests across the entire project
+docker compose exec web python manage.py test
+
+# Run tests in auth_app/tests.py
+docker compose exec web python manage.py test auth_app.tests
+
+# Run tests in video_app/tests.py
+docker compose exec web python manage.py test video_app.tests
+```
+
+**Locally (outside Docker):**
+
+```bash
+# Run all tests with active virtual environment
+python manage.py test
+```
